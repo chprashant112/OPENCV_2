@@ -1,0 +1,31 @@
+from ultralytics import YOLO
+import torch
+import os
+
+# Path to the data.yaml
+YAML_PATH = r"C:\Users\91721\Desktop\deco_dataset_final\data.yaml"
+
+def start_training():
+    # 1. Load the base YOLOv8 Nano model
+    model = YOLO("yolov8n.pt")
+
+    # 2. Train with "Safe" Settings
+    results = model.train(
+        data=YAML_PATH,
+        epochs=50,         
+        imgsz=416,         # REDUCED from 640: Major memory saver, still works for DECO
+        batch=2,           # REDUCED from 4: Prevents "Out of Memory" crashes
+        workers=0,         # Keeps processing in a single thread (Crucial for Windows)
+        device="cpu",      # FORCE CPU for now to see if GPU is the one crashing
+        project="DECO_INSPECTION",
+        name="color_v1_experiment",
+        exist_ok=True,
+        cache=False,       # Prevents RAM from filling up with images
+        amp=False          # Disables automatic mixed precision (more stable on older GPUs)
+    )
+    
+    print("Training Complete!")
+
+if __name__ == "__main__":
+    # This line is REQUIRED on Windows to prevent the "Kernel Died" loop
+    start_training()
