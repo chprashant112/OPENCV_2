@@ -1,0 +1,70 @@
+import os
+import shutil
+import random
+
+# ================= SETTINGS =================
+RAW_DATA_PATH = r"C:\Users\91721\Desktop\decocam"
+FINAL_DATASET_PATH = r"C:\Users\91721\Desktop\deco_dataset_final"
+TRAIN_SPLIT = 0.8
+CLASS_NAMES = ["ROI", "COLOR", "DECO"]
+# ============================================
+
+def prepare_data():
+    # 1. Clean and Create Folders
+    if os.path.exists(FINAL_DATASET_PATH):
+        shutil.rmtree(FINAL_DATASET_PATH)
+    
+    for folder in ["images/train", "images/val", "labels/train", "labels/val"]:
+        os.makedirs(os.path.join(FINAL_DATASET_PATH, folder), exist_ok=True)
+
+    # 2. Get all image files
+    all_images = [f for f in os.listdir(RAW_DATA_PATH) 
+                  if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+    
+    random.shuffle(all_images)
+    split_idx = int(len(all_images) * TRAIN_SPLIT)
+    
+    train_list = all_images[:split_idx]
+    val_list = all_images[split_idx:]
+
+    def move_set(file_list, target_type):
+        count = 0
+        for filename in file_list:
+            basename = os.path.splitext(filename)[0]
+            
+            # Paths
+            img_src = os.path.join(RAW_DATA_PATH, filename)
+            lbl_src = os.path.join(RAW_DATA_PATH, basename + ".txt")
+            
+            # Only move if both image and label exist
+            if os.path.exists(lbl_src):
+                shutil.copy(img_src, os.path.join(FINAL_DATASET_PATH, "images", target_type, filename))
+                shutil.copy(lbl_src, os.path.join(FINAL_DATASET_PATH, "labels", target_type, basename + ".txt"))
+                count += 1
+        return count
+
+    # 3. Move files
+    n_train = move_set(train_list, "train")
+    n_val = move_set(val_list, "val")
+
+    # 4. Create data.yaml (FIXED to avoid backslash error)
+    safe_path = FINAL_DATASET_PATH.replace('\\', '/')
+    yaml_content = [
+        f"path: {safe_path}",
+        "train: images/train",
+        "val: images/val",
+        "",
+        f"nc: {len(CLASS_NAMES)}",
+        "names:",
+    ]
+    for i, name in enumerate(CLASS_NAMES):
+        yaml_content.append(f"  {i}: {name}")
+
+    with open(os.path.join(FINAL_DATASET_PATH, "data.yaml"), "w") as f:
+        f.write("\n".join(yaml_content))
+
+    print(f"--- Dataset Ready ---")
+    print(f"Total Train: {n_train} | Total Val: {n_val}")
+    print(f"Location: {FINAL_DATASET_PATH}")
+
+prepare_data()
